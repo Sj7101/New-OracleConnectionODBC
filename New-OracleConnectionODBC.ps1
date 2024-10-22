@@ -16,39 +16,25 @@ User ID=your-username;
 Password=$plainPassword;
 "@
 
-# Load the Oracle Managed Data Access DLL using Reflection
-try {
-    [Reflection.Assembly]::LoadFrom("C:\Path\To\Oracle.ManagedDataAccess.dll") | Out-Null
-} catch {
-    $e = $_.Exception
-    Write-Error "Failed to load assembly: $($e.Message)"
-    if ($e.InnerException) {
-        Write-Error "Inner Exception: $($e.InnerException.Message)"
-    }
-    if ($e.LoaderExceptions) {
-        foreach ($le in $e.LoaderExceptions) {
-            Write-Error "LoaderException: $($le.Message)"
-        }
-    }
-    exit
-}
+# Load the Oracle Managed Data Access DLL
+[Reflection.Assembly]::LoadFrom("C:\Path\To\Oracle.ManagedDataAccess.dll") | Out-Null
+
+# Configure settings programmatically
+[Oracle.ManagedDataAccess.Client.OracleConfiguration]::SelfTuning = $false
+[Oracle.ManagedDataAccess.Client.OracleConfiguration]::FetchSize = 131072
+[Oracle.ManagedDataAccess.Client.OracleConfiguration]::TraceLevel = 0
 
 # Proceed with creating the connection
 try {
     $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($connectionString)
-} catch {
-    Write-Error "Failed to create OracleConnection: $($_.Exception.Message)"
-    exit
-}
+    Write-Host "OracleConnection object created successfully."
 
-
-try {
     # Open the connection
     $connection.Open()
     Write-Host "Connection successful!"
 
     # Define your query
-    $query = "SELECT * FROM your_table WHERE ROWNUM <= 10"  # Replace 'your_table' with your actual table
+    $query = "SELECT 1 FROM DUAL"
 
     # Create a command
     $command = $connection.CreateCommand()
@@ -63,16 +49,30 @@ try {
     $dataTable | Format-Table -AutoSize
 }
 catch {
-    Write-Error "An error occurred during database operations: $($_.Exception.Message)"
+    Write-Error "An error occurred: $($_.Exception.Message)"
+
+    if ($_.Exception.InnerException) {
+        Write-Error "Inner Exception: $($_.Exception.InnerException.Message)"
+    }
+
+    if ($_.Exception.InnerException.InnerException) {
+        Write-Error "Inner Inner Exception: $($_.Exception.InnerException.InnerException.Message)"
+    }
+
+    Write-Host "Stack Trace:"
+    Write-Host $($_.Exception.StackTrace)
 }
 finally {
     # Close the connection
-    $connection.Close()
+    if ($connection.State -eq 'Open') {
+        $connection.Close()
+    }
     Write-Host "Connection closed."
 
     # Clear the plain-text password from memory
     $plainPassword = $null
 }
+
 
 
 <#
