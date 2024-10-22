@@ -34,7 +34,13 @@ try {
 }
 
 # Proceed with creating the connection
-$connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($connectionString)
+try {
+    $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($connectionString)
+} catch {
+    Write-Error "Failed to create OracleConnection: $($_.Exception.Message)"
+    exit
+}
+
 
 try {
     # Open the connection
@@ -84,7 +90,7 @@ Replace your_table in the $query variable with the actual table name you want to
 
 #>
 
-#Test Loading the Assembly Alone
+<#Test Loading the Assembly Alone
 try {
     [Reflection.Assembly]::LoadFrom("C:\Path\To\Oracle.ManagedDataAccess.dll") | Out-Null
     Write-Host "Assembly loaded successfully."
@@ -100,3 +106,60 @@ try {
         }
     }
 }
+
+#>
+
+<# Confirm the Assembly Is Properly Loaded
+
+$assemblyPath = "C:\Path\To\Oracle.ManagedDataAccess.dll"
+$assembly = [Reflection.Assembly]::LoadFrom($assemblyPath)
+
+# List all types in the assembly
+$assembly.GetTypes() | Where-Object { $_.FullName -like "*OracleConnection*" } | Select FullName
+
+Expected Output:
+Oracle.ManagedDataAccess.Client.OracleConnection
+
+
+#>
+
+<#
+Use fully qualified assembly name
+Note: Replace the Version and PublicKeyToken with the values from your DLL.
+
+$assemblyName = "Oracle.ManagedDataAccess, Version=4.122.19.1, Culture=neutral, PublicKeyToken=89b483f429c47342"
+Add-Type -AssemblyName $assemblyName
+
+
+#>
+
+<#
+
+Use [Activator]::CreateInstance Instead of New-Object
+If New-Object isn't working, you can try using the .NET Activator class to create an instance of OracleConnection.
+
+$connectionType = [Oracle.ManagedDataAccess.Client.OracleConnection]
+$connection = [Activator]::CreateInstance($connectionType, $connectionString)
+
+Replace your New-Object line with the above code.
+
+#>
+
+<#
+Minimal Test Script:
+
+$assemblyPath = "C:\Path\To\Oracle.ManagedDataAccess.dll"
+[Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
+
+$connectionString = "User Id=your_username;Password=your_password;Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=danuxz9200si.wellsfargo.com)(PORT=3203))(CONNECT_DATA=(SERVICE_NAME=ullmsgzl_uat)));"
+
+try {
+    $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($connectionString)
+    Write-Host "OracleConnection object created successfully."
+} catch {
+    Write-Error "Failed to create OracleConnection: $($_.Exception.Message)"
+}
+
+
+
+#>
