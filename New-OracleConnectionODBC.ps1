@@ -18,7 +18,15 @@ Password=$plainPassword;
 
 # Load the Oracle Managed Data Access DLL
 $assemblyPath = "C:\Path\To\Oracle.ManagedDataAccess.dll"
-[Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
+$assembly = [Reflection.Assembly]::LoadFrom($assemblyPath)
+
+# Use reflection to access the internal configuration
+$providerConfigType = $assembly.GetType("OracleInternal.Common.ProviderConfig")
+$configField = $providerConfigType.GetField("_config", [Reflection.BindingFlags] "NonPublic, Static")
+
+# Create a custom configuration object
+$config = New-Object OracleInternal.Common.ConfigBase
+$configField.SetValue($null, $config)
 
 # Proceed with creating the connection
 try {
@@ -46,13 +54,16 @@ try {
 }
 catch {
     Write-Error "An error occurred: $($_.Exception.Message)"
-    if ($_.Exception.InnerException) {
-        Write-Error "Inner Exception: $($_.Exception.InnerException.Message)"
+    $currentException = $_.Exception
+    while ($currentException.InnerException) {
+        $currentException = $currentException.InnerException
+        Write-Error "Inner Exception: $($currentException.Message)"
     }
     # Display the stack trace
     Write-Host "Stack Trace:"
-    Write-Host $($_.Exception.StackTrace)
+    Write-Host $currentException.StackTrace
 }
+
 finally {
     # Ensure the connection is closed
     if ($connection.State -eq 'Open') {
