@@ -1,7 +1,7 @@
 # Prompt for the password securely
-#$securePassword = Read-Host "Enter your Oracle database password" -AsSecureString
+$securePassword = Read-Host "Enter your Oracle database password" -AsSecureString
 
-# Convert the secure password to plain text (required by the Oracle client)
+# Convert the secure password to plain text (required for the connection string)
 $passwordPtr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
 $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPtr)
 [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPtr)  # Clean up
@@ -16,10 +16,24 @@ User ID=your-username;
 Password=$plainPassword;
 "@
 
-# Load the Oracle Managed Data Access DLL
-Add-Type -Path "C:\Oracle\lib\Oracle.ManagedDataAccess.dll"
+# Load the Oracle Managed Data Access DLL using Reflection
+try {
+    [Reflection.Assembly]::LoadFrom("C:\Path\To\Oracle.ManagedDataAccess.dll") | Out-Null
+} catch {
+    $e = $_.Exception
+    Write-Error "Failed to load assembly: $($e.Message)"
+    if ($e.InnerException) {
+        Write-Error "Inner Exception: $($e.InnerException.Message)"
+    }
+    if ($e.LoaderExceptions) {
+        foreach ($le in $e.LoaderExceptions) {
+            Write-Error "LoaderException: $($le.Message)"
+        }
+    }
+    exit
+}
 
-# Create a new Oracle connection
+# Proceed with creating the connection
 $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($connectionString)
 
 try {
@@ -43,7 +57,7 @@ try {
     $dataTable | Format-Table -AutoSize
 }
 catch {
-    Write-Error "An error occurred: $_"
+    Write-Error "An error occurred during database operations: $($_.Exception.Message)"
 }
 finally {
     # Close the connection
@@ -69,3 +83,20 @@ Adjust the Query:
 Replace your_table in the $query variable with the actual table name you want to query.
 
 #>
+
+#Test Loading the Assembly Alone
+try {
+    [Reflection.Assembly]::LoadFrom("C:\Path\To\Oracle.ManagedDataAccess.dll") | Out-Null
+    Write-Host "Assembly loaded successfully."
+} catch {
+    $e = $_.Exception
+    Write-Error "Failed to load assembly: $($e.Message)"
+    if ($e.InnerException) {
+        Write-Error "Inner Exception: $($e.InnerException.Message)"
+    }
+    if ($e.LoaderExceptions) {
+        foreach ($le in $e.LoaderExceptions) {
+            Write-Error "LoaderException: $($le.Message)"
+        }
+    }
+}
